@@ -456,7 +456,7 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
   },
   introText: {
-    fontSize: 50,
+    fontSize: 45, //diminuí para 45
     fontWeight: 'bold',
     color: '#fff', // Cor branca
   },
