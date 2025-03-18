@@ -491,7 +491,7 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
     alignItems: 'center',
     padding: 15,
-    backgroundColor: '#fff',
+    backgroundColor: '#fff', //cor branca
     borderRadius: 10,
     marginBottom: 10,
   },
