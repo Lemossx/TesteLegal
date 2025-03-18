@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { View, Text, StyleSheet, Modal, Image, TouchableOpacity, Animated, ScrollView, Switch } from 'react-native';
+import { View, Text, StyleSheet, Modal, Image, TouchableOpacity, Animated, ScrollView, Switch, TextInput } from 'react-native';
 import { Audio } from 'expo-av';
 import DateTimePicker from '@react-native-community/datetimepicker';
 // Remove SafeAreaView import
@@ -16,6 +16,9 @@ export default function App() {
   const [language, setLanguage] = useState('pt');
   const [introVisible, setIntroVisible] = useState(true);
   const [editIndex, setEditIndex] = useState(null);
+  const [label, setLabel] = useState('');
+  const [labelVisible, setLabelVisible] = useState(false);
+  const [currentLabel, setCurrentLabel] = useState('');
   const fadeAnim = useState(new Animated.Value(0))[0];
   const progressAnim = useState(new Animated.Value(0))[0];
 
@@ -61,6 +64,7 @@ export default function App() {
       setSound(null);
     }
     setAlarmRinging(false);
+    setCurrentLabel('');
   };
 
   const setAlarm = (event, date) => {
@@ -68,16 +72,19 @@ export default function App() {
       if (editIndex !== null) {
         const updatedAlarms = [...alarms];
         updatedAlarms[editIndex].time = date;
+        updatedAlarms[editIndex].label = label;
         setAlarms(updatedAlarms);
         setEditIndex(null);
       } else {
         const newAlarm = {
           time: date,
           active: true,
+          label: label,
         };
         setAlarms([...alarms, newAlarm]);
       }
       setShowPicker(false);
+      setLabel('');
     } else if (event.type === 'dismissed') {
       setShowPicker(false);
     }
@@ -97,6 +104,7 @@ export default function App() {
           updatedAlarms[index].active = false;
           setAlarms(updatedAlarms);
           setAlarmRinging(true);
+          setCurrentLabel(alarm.label);
         }
       });
     }, 1000);
@@ -142,8 +150,24 @@ export default function App() {
 
   const editAlarm = (index) => {
     setSelectedTime(alarms[index].time);
+    setLabel(alarms[index].label);
     setEditIndex(index);
     setShowPicker(true);
+  };
+
+  const openLabelModal = (index) => {
+    setLabel(alarms[index].label);
+    setEditIndex(index);
+    setLabelVisible(true);
+  };
+
+  const saveLabel = () => {
+    const updatedAlarms = [...alarms];
+    updatedAlarms[editIndex].label = label;
+    setAlarms(updatedAlarms);
+    setLabel('');
+    setEditIndex(null);
+    setLabelVisible(false);
   };
 
   const translations = {
@@ -215,13 +239,19 @@ export default function App() {
             {alarms.length > 0 ? (
               alarms.map((alarm, index) => (
                 <View key={index} style={styles.alarmItem}>
-                  <Text style={styles.alarmText}>{alarm.time.toLocaleTimeString()}</Text>
+                  <View>
+                    <Text style={styles.alarmText}>{alarm.time.toLocaleTimeString()}</Text>
+                    <Text style={styles.alarmLabel}>{alarm.label}</Text>
+                  </View>
                   <Switch
                     value={alarm.active}
                     onValueChange={() => toggleAlarm(index)}
                     trackColor={{ false: '#767577', true: '#20c997' }} // Cor da trilha
                     thumbColor={alarm.active ? '#1eba8c' : '#f4f3f4'} // Cor do polegar
                   />
+                  <TouchableOpacity onPress={() => openLabelModal(index)}>
+                    <Image source={require('./assets/etiqueta.png')} style={styles.icon} />
+                  </TouchableOpacity>
                   <TouchableOpacity onPress={() => editAlarm(index)}>
                     <Image source={require('./assets/editar.png')} style={styles.icon} />
                   </TouchableOpacity>
@@ -258,6 +288,7 @@ export default function App() {
             <View style={styles.modalContainer}>
               <View style={styles.modalContent}>
                 <Text style={styles.modalText}>{t.alarmRinging}</Text>
+                {currentLabel ? <Text style={styles.modalLabel}>{currentLabel}</Text> : null}
                 <TouchableOpacity style={styles.stopButton} onPress={stopAlarm}>
                   <Text style={styles.stopButtonText}>{t.stopAlarm}</Text>
                 </TouchableOpacity>
@@ -308,6 +339,29 @@ export default function App() {
                 </TouchableOpacity>
                 <TouchableOpacity style={styles.settingsOption} onPress={closeLanguageSettings}>
                   <Text style={styles.settingsOptionText}>{t.close}</Text>
+                </TouchableOpacity>
+              </View>
+            </View>
+          </Modal>
+          <Modal
+            animationType="slide"
+            transparent={true}
+            visible={labelVisible}
+            onRequestClose={() => {
+              setLabelVisible(false);
+            }}
+          >
+            <View style={styles.modalContainer}>
+              <View style={styles.modalContent}>
+                <Text style={styles.modalText}>Adicionar Etiqueta</Text>
+                <TextInput
+                  style={styles.labelInput}
+                  placeholder="Adicionar etiqueta"
+                  value={label}
+                  onChangeText={setLabel}
+                />
+                <TouchableOpacity style={styles.saveButton} onPress={saveLabel}>
+                  <Text style={styles.saveButtonText}>Salvar</Text>
                 </TouchableOpacity>
               </View>
             </View>
@@ -408,6 +462,12 @@ const styles = StyleSheet.create({
     marginBottom: 20,
     textAlign: 'center',
   },
+  modalLabel: {
+    fontSize: 18,
+    color: '#666',
+    marginBottom: 20,
+    textAlign: 'center',
+  },
   stopButton: {
     backgroundColor: '#20c997', // Cor verde água
     padding: 15,
@@ -499,12 +559,34 @@ const styles = StyleSheet.create({
     fontSize: 18,
     color: '#333',
   },
-  alarmToggle: {
-    fontSize: 16,
-    color: '#20c997',
+  alarmLabel: {
+    fontSize: 14,
+    color: '#666',
   },
   icon: {
     width: 24,
     height: 24,
+  },
+  labelInput: {
+    borderColor: '#20c997',
+    borderWidth: 1,
+    borderRadius: 10,
+    padding: 10,
+    fontSize: 16,
+    color: '#333',
+    width: '100%',
+    marginBottom: 20,
+  },
+  saveButton: {
+    backgroundColor: '#20c997',
+    padding: 15,
+    borderRadius: 10,
+    alignItems: 'center',
+    width: '80%',
+  },
+  saveButtonText: {
+    color: '#fff',
+    fontSize: 18,
+    fontWeight: 'bold',
   },
 });
